@@ -1,0 +1,94 @@
+name: Setup cabal-cache for S3
+description: Setup cabal-cache to store Haskell packages cache on S3
+
+inputs:
+  awsKey:
+    description: 'AWS Access Key ID'
+    required: true
+  awsSecretKey:
+    description: 'AWS Secret Key'
+    required: true
+  awsRegion:
+    description: 'AWS Region'
+    required: true
+  archiveUri:
+    description: 'Archive URI in form of "s3://bucket/path"'
+    required: true
+  cabalStorePath:
+    description: 'Path to local cabal store'
+    required: true
+  threadsNum:
+    description: 'Number of threads concurrently uploading to S3'
+    required: false
+    default: "4"
+
+branding:
+  icon: archive
+  color: green
+
+runs:
+  using: "composite"
+  steps:
+    - name: Downloading cabal-cache
+      shell: bash
+      env:
+        CI_TEMP: ${{runner.temp}}
+      run: |
+        export CI_TEMP="$(echo "/$CI_TEMP" | sed 's/\\/\//g' | sed 's/://')"
+        export LOCAL_BIN="$HOME/.local/bin"
+        mkdir -p "$LOCAL_BIN"
+
+        if [[ ! ":$PATH:" == *":$HOME/.cabal/bin:"* ]]; then
+          export PATH="$LOCAL_BIN:$PATH"
+          echo "PATH=$LOCAL_BIN:$PATH" >> $GITHUB_ENV
+        fi
+
+        if ! command -v cabal-cache &> /dev/null; then
+          case "${{runner.os}}" in
+            Linux)    CI_OS=linux   ;;
+            Windows)  CI_OS=nt      ;;
+            macOS)    CI_OS=osx     ;;
+            *)        echo "Unsupported OS: ${{ runner.os }}"; exit 1;;
+          esac
+
+          echo "Downloading from https://dl.haskellworks.io/binaries/cabal-cache/cabal-cache_x86_64_${CI_OS}.tar.gz"
+          curl -L "https://dl.haskellworks.io/binaries/cabal-cache/cabal-cache_x86_64_${CI_OS}.tar.gz" \
+            -o "$CI_TEMP/cabal-cache.tar.gz"
+          tar zxvf "$CI_TEMP/cabal-cache.tar.gz" -C "$LOCAL_BIN"
+        fi
+
+    - name: Configure scripts
+      shell: bash
+      run: |
+        cat <<EOF > $HOME/.local/bin/cabal-cache-op
+        #!/usr/bin/env bash
+
+        CMD=\$1
+
+        export AWS_ACCESS_KEY_ID="${{ inputs.awsKey }}"
+        export AWS_SECRET_ACCESS_KEY="${{ inputs.awsSecretKey }}"
+        export AWS_REGION="${{ inputs.awsRegion }}"
+
+        cabal-cache \$CMD \
+          --threads ${{ inputs.threadsNum }} \
+          --archive-uri "${{ inputs.archiveUri }}" \
+          --region ${{ inputs.awsRegion }} \
+          --store-path "${{ inputs.cabalStorePath }}"
+
+        EOF
+
+        cat <<EOF >> $HOME/.local/bin/cabal-cache-store
+        #!/usr/bin/env bash
+
+        cabal-cache-op sync-to-archive
+        EOF
+
+        cat <<EOF >> $HOME/.local/bin/cabal-cache-restore
+        #!/usr/bin/env bash
+
+        cabal-cache-op sync-from-archive
+        EOF
+
+        chmod +x $HOME/.local/bin/cabal-cache-op
+        chmod +x $HOME/.local/bin/cabal-cache-store
+        chmod +x $HOME/.local/bin/cabal-cache-restore
