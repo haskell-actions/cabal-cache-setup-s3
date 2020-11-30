@@ -67,7 +67,7 @@ runs:
 
         export AWS_ACCESS_KEY_ID="${{ inputs.awsKey }}"
         export AWS_SECRET_ACCESS_KEY="${{ inputs.awsSecretKey }}"
-        export AWS_REGION="${{ inputs.awsRegion }}"
+        # export AWS_REGION="${{ inputs.awsRegion }}"
 
         cabal-cache \$CMD \
           --threads ${{ inputs.threadsNum }} \
