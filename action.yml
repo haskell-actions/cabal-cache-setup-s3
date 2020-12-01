@@ -63,6 +63,8 @@ runs:
         echo '_CABAL_CACHE_AWS_ACCESS_KEY_ID__="${{ inputs.awsKey }}"' >> $GITHUB_ENV
         echo '_CABAL_CACHE_AWS_SECRET_ACCESS_KEY__="${{ inputs.awsSecretKey }}"' >> $GITHUB_ENV
         echo '_CABAL_CACHE_ARCHIVE_URI__="${{ inputs.archiveUri }}"' >> $GITHUB_ENV
+        
+        cat $GITHUB_ENV
 
     - name: Configure scripts
       shell: bash
