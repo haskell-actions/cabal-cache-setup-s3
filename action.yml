@@ -79,7 +79,7 @@ runs:
 
         cabal-cache \$CMD \
           --threads ${{ inputs.threadsNum }} \
-          --archive-uri "\$_CABAL_CACHE_ARCHIVE_URI__" \
+          --archive-uri \$_CABAL_CACHE_ARCHIVE_URI__ \
           --region ${{ inputs.awsRegion }} \
           --store-path "${{ inputs.cabalStorePath }}"
 
