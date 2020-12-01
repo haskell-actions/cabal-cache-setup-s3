@@ -56,6 +56,13 @@ runs:
             -o "$CI_TEMP/cabal-cache.tar.gz"
           tar zxvf "$CI_TEMP/cabal-cache.tar.gz" -C "$LOCAL_BIN"
         fi
+        
+    - name: Configure environment
+      shell: bash
+      run: |
+        echo '_CABAL_CACHE_AWS_ACCESS_KEY_ID__="${{ inputs.awsKey }}"' >> $GITHUB_ENV
+        echo '_CABAL_CACHE_AWS_SECRET_ACCESS_KEY__="${{ inputs.awsSecretKey }}"' >> $GITHUB_ENV
+        echo '_CABAL_CACHE_ARCHIVE_URI__="${{ inputs.archiveUri }}"' >> $GITHUB_ENV
 
     - name: Configure scripts
       shell: bash
@@ -65,13 +72,12 @@ runs:
 
         CMD=\$1
 
-        export AWS_ACCESS_KEY_ID="${{ inputs.awsKey }}"
-        export AWS_SECRET_ACCESS_KEY="${{ inputs.awsSecretKey }}"
-        # export AWS_REGION="${{ inputs.awsRegion }}"
+        export AWS_ACCESS_KEY_ID="\$_CABAL_CACHE_AWS_ACCESS_KEY_ID__"
+        export AWS_SECRET_ACCESS_KEY="\$_CABAL_CACHE_AWS_SECRET_ACCESS_KEY__"
 
         cabal-cache \$CMD \
           --threads ${{ inputs.threadsNum }} \
-          --archive-uri "${{ inputs.archiveUri }}" \
+          --archive-uri "\$_CABAL_CACHE_ARCHIVE_URI__" \
           --region ${{ inputs.awsRegion }} \
           --store-path "${{ inputs.cabalStorePath }}"
 
